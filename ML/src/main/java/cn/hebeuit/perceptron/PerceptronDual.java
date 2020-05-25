@@ -14,6 +14,7 @@ public class PerceptronDual  extends Perceptron{
 
     @Override
     public void Train(HashMap<DenseVector, Byte> map,int iter) {
+        //w初始为每个向量权重
         Set<DenseVector> set =map.keySet();
         int size=set.size();
         DenseVector dense[]=new DenseVector[size];
@@ -38,6 +39,7 @@ public class PerceptronDual  extends Perceptron{
             }
         }
         DenseVector tmp=new DenseVector(dense[0].size(),0.0);
+        //计算表达式w(tmp)
         for (int i = 0,row=tmp.size(); i <row ; i++) {
             double add=0;
             for (int j=0;j<dense.length;j++){
@@ -45,7 +47,7 @@ public class PerceptronDual  extends Perceptron{
             }
             tmp.setAt(i,add);
         }
-
+       //w变为表达式的w
         w=tmp;
 
     }
