@@ -1,0 +1,61 @@
+val spark = SparkSession.builder().appName("app").master("local[2]").getOrCreate();
+    val sc = spark.sparkContext
+    import spark.implicits._
+    val conv=new Convolution()
+    conv.initKernel(3,3)//初始化卷积核
+
+    val df1 = spark.read.format("image").option("dropInvalid", true).load("flower_photos/tulips")
+    val df2 = spark.read.format("image").option("dropInvalid", true).load("flower_photos/roses")
+    var data1=df1.selectExpr("image.data","image.height","image.width","image.nChannels","0 as label" )
+    var data2=df2.selectExpr("image.data","image.height","image.width","image.nChannels","1 as label" )
+    var data=data1.union(data2)
+    
+//  统一图片大小
+    var train=data.map(
+      x=>{
+        conv.resize(x.getAs[Array[Byte]](0),x.getInt(2),x.getInt(1),x.getInt(3),500,300,x.getInt(4))
+      }
+    )
+    //卷积
+    var training=train.map(
+      x=>{
+        conv.convolution(x.data,x.width,x.height,x.nChannels,x.label)
+      }
+    )
+    //池化
+    training=training.map(
+      x=>{
+        conv.Pooling2D(x.data,x.width,x.height,x.nChannels,x.label)
+      }
+    )
+    //卷积
+
+    training=training.map(
+      x=>{
+        conv.convolution(x.data,x.width,x.height,x.nChannels,x.label,2,2)
+      }
+    )
+
+    var trained=training.map(
+      x=>{
+        (conv.BytetoVectors(x.data) ,x.label*1.0)
+      }
+    ).toDF("features","label")
+
+    var len=trained.first().getAs[linalg.Vector](0).toDense.size
+    var sp=trained.randomSplit(Array(0.7,0.3), seed = 1234L)
+    var train1=sp(0)
+    var train2=sp(1)
+    //训练神经网络
+    import org.apache.spark.ml.classification.MultilayerPerceptronClassifier
+    import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
+    val layers = Array[Int](len,64,16,8,2)
+    val trainer = new MultilayerPerceptronClassifier().setLayers(layers).setBlockSize(128).setSeed(15L) .setMaxIter(2500)
+    val model = trainer.fit(train1)
+    model.transform(train2).show()
+    /**
+    *样本数据 
+    *wget http://storage.googleapis.com/download.tensorflow.org/example_images/flower_photos.tgz
+    * tar zvxf flower_photos.tgz
+    *该样本数据卷积后采用SVM，可以得到80%-96%准确度，神经网络在70%-60%之间
+    **/
