@@ -112,4 +112,4 @@ class Convolution extends Serializable{
       }
     Image(pdata,kw,kh,d,label)
   }
-}
+ }
