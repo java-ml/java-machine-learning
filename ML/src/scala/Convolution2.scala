@@ -95,14 +95,14 @@ class Convolution extends Serializable{
     val pdata=Array.ofDim[Int](kw*kh*d)
     var temp = 0
       model match {
-        case "avg" =>for(di<-0 until d;wi<-0 until kw;hi<-0 until kh ){
+        case "avg" =>for(di<-0 until d;wi<-0 until (kw,sw);hi<-0 until (kh,sh) ){
           temp=0
           for (swi<- 0 until sw;shi <- 0 until sh){
             temp+=getImgBGR(data,w,h,d,wi*sw+swi,hi*sh+shi,di)
           }
           setImgBGR(pdata,kw,kh,d,wi,hi,di,(temp/(sw*sh)))
         }
-        case "max"=> for(di<-0 until d;wi<-0 until kw;hi<-0 until kw){
+        case "max"=> for(di<-0 until d;wi<-0 until (kw,sw);hi<-0 until (kh,sh)){
           temp=Int.MinValue
           for (swi<- 0 until sw;shi <- 0 until sh){
             temp=Math.max(temp,getImgBGR(data,w,h,d,wi*sw+swi,hi*sh+shi,di))
@@ -110,6 +110,6 @@ class Convolution extends Serializable{
           setImgBGR(pdata,kw,kh,d,wi,hi,di,temp)
         }
       }
-    Image(pdata,kw,kh,d,label)
+      Image(pdata,kw,kh,d,label)
   }
  }
